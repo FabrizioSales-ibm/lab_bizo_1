@@ -1,1 +1,71 @@
+version: '1'
 
+setup:
+  image: icr.io/continuous-delivery/toolchains/devsecops/devsecops-baseimage:2.77.0_commons-0.29.0@sha256:c34527de40ea8a5e4c1764b2937108e2b8a25a82f250d38af950f9ec5ea67966
+  script: |
+    #!/usr/bin/env bash
+
+    if [[ "$PIPELINE_DEBUG" == 1 ]]; then
+      trap env EXIT
+      env
+      set -x
+    fi
+
+    if [[ "$(get_env pipeline_namespace "")" == "cd" || "$(get_env pipeline_namespace "")" == "cc" ]]; then
+      echo "No setup when running CD or CC pipeline..."
+      exit 0
+    fi
+
+    source scripts/ci-cd/code_setup.sh
+
+test:
+  abort_on_failure: false
+  image: icr.io/continuous-delivery/toolchains/devsecops/devsecops-baseimage:2.77.0_commons-0.29.0@sha256:c34527de40ea8a5e4c1764b2937108e2b8a25a82f250d38af950f9ec5ea67966
+  script: |
+    #!/usr/bin/env bash
+
+    if [[ "$PIPELINE_DEBUG" == 1 ]]; then
+      trap env EXIT
+      env
+      set -x
+    fi
+
+    # trigger unit tests
+    source scripts/ci-cd/unit-tests-setup.sh
+    source scripts/ci-cd/unit-tests.sh
+
+containerize:
+  dind: true
+  #image: icr.io/continuous-delivery/pipeline/pipeline-base-image:2.12@sha256:ff4053b0bca784d6d105fee1d008cfb20db206011453071e86b69ca3fde706a4
+  image: icr.io/continuous-delivery/toolchains/devsecops/devsecops-baseimage:2.77.0_commons-0.29.0@sha256:c34527de40ea8a5e4c1764b2937108e2b8a25a82f250d38af950f9ec5ea67966
+  script: |
+    #!/usr/bin/env bash
+
+    if [[ "$PIPELINE_DEBUG" == 1 ]]; then
+      trap env EXIT
+      env
+      set -x
+    fi
+
+    source scripts/ci-cd/build_setup.sh
+    source scripts/ci-cd/build.sh
+
+deploy:
+  image: icr.io/continuous-delivery/toolchains/devsecops/devsecops-baseimage:2.77.0_commons-0.29.0@sha256:c34527de40ea8a5e4c1764b2937108e2b8a25a82f250d38af950f9ec5ea67966
+  script: |
+    #!/usr/bin/env bash
+
+    if [[ "$PIPELINE_DEBUG" == 1 ]]; then
+      trap env EXIT
+      env
+      set -x
+    fi
+
+    # use different setup depending on CI or CD
+    if [ "$(get_env pipeline_namespace "")" = "ci" ]; then
+      source scripts/ci-cd/deploy_setup_ci.sh
+    else
+      source scripts/ci-cd/deploy_setup_cd.sh
+    fi
+
+    source scripts/ci-cd/deploy.sh
